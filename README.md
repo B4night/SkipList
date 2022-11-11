@@ -1,2 +1,49 @@
 # SkipList
-skip list implemented by cpp11
+
+## skip_list_node
+
+跳表的结点在`skip_list_node.h`文件中实现, 结构如下
+
+``` C++
+template <typename K, typename V>    // key and value
+class skip_list_node {
+    friend class skip_list<K, V>;
+private:
+    K key;
+    V value;
+    int level;
+    skip_list_node<K, V>** forward;
+public:
+    skip_list_node() {}
+    skip_list_node(K k, V v, int level);
+    ~skip_list_node();
+    K get_key() const;
+    V get_value() const;
+};
+```
+
+下面简单介绍一下结点的成员`forward`.
+
+在构造函数中, `forward`会像如下这样被初始化
+
+``` C++
+forward = new skip_list_node<K, V>* [level + 1];	// 0~level层共level+1层
+```
+
+`forward`指向一个长度为`level+1`的数组, 数组的元素都是`skip_list_node<K, V>*`类型的, 即如下图所示.
+
+![image-20221111170320991](./src/image-20221111170320991.png)
+
+forward有k个元素, 则说明该结点有k个指针可以指向后继结点. `forward[i]`指向的是第i层的后继结点
+
+## skip_list
+
+`skip_list`支持构造一个空的快表, 也支持从文件中读取格式化的数据来建立快表.
+
+默认支持在调用析构函数时将快表中的所有内容存储到同文件夹下的`skip_list_dump`文件中
+
+目前实现了插入, 查找和删除的功能.
+
+
+
+todo: 让快表监听某个端口, 其他进程可以通过向端口发送格式化的数据来存储信息

@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
+#include <fstream>
 
 template <typename K, typename V>
 class skip_list {
@@ -14,7 +15,8 @@ private:
     skip_list_node<K, V>* header;
     int cnt;
 public:
-    skip_list(int l = 8);
+    skip_list(int l = 8, bool i = true);
+    skip_list(const char*, bool i = true);
     ~skip_list();
     int get_random_level();
     skip_list_node<K, V>* create_node(K, V, int);
@@ -25,7 +27,45 @@ public:
     void show_list();
 private:
     std::mutex lk;
+    bool is_dump_to_file;
+    void dump_to_file();
+    void load_from_file();
+
+    const std::string delimiter = ":";
 };
+
+template <typename K, typename V>
+skip_list<K, V>::skip_list(const char* filename, bool i) : current_level(0), cnt(0), is_dump_to_file(i)   {
+    std::cout << "load file" << std::endl;
+    std::ifstream ifs(filename);
+    if (ifs.rdstate() == std::ios_base::failbit) {
+        std::cout << "file name is error" << std::endl;
+        exit(0);
+    }
+    ifs >> max_level;
+    header = new skip_list_node<K, V>(K{}, V{}, max_level);
+    std::string tmp;
+    while (ifs >> tmp) {
+        int cnt = tmp.find(delimiter);
+        if (cnt == std::string::npos)
+            break;
+        std::string key = tmp.substr(0, cnt);
+        std::string value = tmp.substr(cnt + 1, tmp.size());
+        insert_node(key, value);
+        // show_list();
+    }
+}
+
+template <typename K, typename V>
+void skip_list<K, V>::dump_to_file() {
+    std::ofstream of("skip_list_dump", std::ios_base::out | std::ios_base::trunc);
+    skip_list_node<K, V>* current = header->forward[0];
+    of << this->max_level << std::endl;
+    for (int i = 0; i < cnt; i++) {
+        of << current->get_key() << delimiter << current->get_value() << std::endl;
+        current = current->forward[0];
+    }
+}
 
 template <typename K, typename V>
 void skip_list<K, V>::show_list() {
@@ -46,7 +86,7 @@ int skip_list<K, V>::size() {
 }
 
 template <typename K, typename V>
-skip_list<K, V>::skip_list(int max_level) : max_level(max_level), current_level(0), cnt(0) {
+skip_list<K, V>::skip_list(int max_level, bool b) : max_level(max_level), current_level(0), cnt(0), is_dump_to_file(b) {
     K k;
     V v;
     this->header = new skip_list_node<K, V>(k, v, max_level);
@@ -54,6 +94,9 @@ skip_list<K, V>::skip_list(int max_level) : max_level(max_level), current_level(
 
 template <typename K, typename V>
 skip_list<K, V>::~skip_list() {
+    if (is_dump_to_file) {
+        dump_to_file();
+    }
     delete header;
 }
 
@@ -126,11 +169,41 @@ bool skip_list<K, V>::search_node(K k) {
     }
     std::cout << "Not find key" << std::endl;
     // std::cout.flush();
+    return false;
 }
 
 template <typename K, typename V>
 void skip_list<K, V>::delete_node(K k) {
+    std::lock_guard<std::mutex> lg(lk);
+    std::cout << "Start delete node, key = " << k << std::endl;
+    if (search_node(k) == false) {
+        std::cout << "Not Fild key:" << k << " delete cancelled." << std::endl;
+        return;
+    }
 
+    skip_list_node<K, V>* current = this->header;
+    skip_list_node<K, V>* update[max_level + 1];    // 记录每一层经过的值最大(最右边)的结点
+    for (int i = 0; i < max_level + 1; i++)
+        update[i] = nullptr;
+    
+    for (int i = current_level; i >= 0; i--) {
+        while (current->forward[i] && current->forward[i]->get_key() < k)
+            current = current->forward[i];
+        update[i] = current;
+    }
+    current = current->forward[0];  // 此时current指向的结点的key肯定为k
+    
+    for (int i = 0; i <= current_level; i++) {
+        if (update[i]->forward[i] != current)
+            break;
+        update[i]->forward[i] = current->forward[i];
+    }
+
+    while (current_level > 0 && header->forward[current_level] == nullptr)
+        current_level--;
+    
+    std::cout << "Successfully delete key:" << k << std::endl;
+    cnt--;
 }
 
 #endif
