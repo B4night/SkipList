@@ -14,6 +14,7 @@ private:
     int current_level;
     skip_list_node<K, V>* header;
     int cnt;
+    std::string path;
 public:
     skip_list(int l = 8, bool i = true);
     skip_list(const char*, bool i = true);
@@ -25,6 +26,8 @@ public:
     void delete_node(K);
     int size();
     void show_list();
+
+    void set_dump_filepath(const char* str);
 private:
     std::mutex lk;
     bool is_dump_to_file;
@@ -35,7 +38,13 @@ private:
 };
 
 template <typename K, typename V>
+void skip_list<K, V>::set_dump_filepath(const char* str) {
+    path = str;
+}
+
+template <typename K, typename V>
 skip_list<K, V>::skip_list(const char* filename, bool i) : current_level(0), cnt(0), is_dump_to_file(i)   {
+    path = filename;
     std::cout << "load file" << std::endl;
     std::ifstream ifs(filename);
     if (ifs.rdstate() == std::ios_base::failbit) {
@@ -58,7 +67,11 @@ skip_list<K, V>::skip_list(const char* filename, bool i) : current_level(0), cnt
 
 template <typename K, typename V>
 void skip_list<K, V>::dump_to_file() {
-    std::ofstream of("skip_list_dump", std::ios_base::out | std::ios_base::trunc);
+    std::ofstream of;
+    if (path.size())
+        of = std::move(std::ofstream(path, std::ios_base::out | std::ios_base::trunc));
+    else
+        of = std::move(std::ofstream("skip_list_dump", std::ios_base::out | std::ios_base::trunc));
     skip_list_node<K, V>* current = header->forward[0];
     of << this->max_level << std::endl;
     for (int i = 0; i < cnt; i++) {

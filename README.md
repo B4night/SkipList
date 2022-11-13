@@ -36,6 +36,8 @@ forward = new skip_list_node<K, V>* [level + 1];	// 0~level层共level+1层
 
 forward有k个元素, 则说明该结点有k个指针可以指向后继结点. `forward[i]`指向的是第i层的后继结点
 
+
+
 ## skip_list
 
 `skip_list`支持构造一个空的快表, 也支持从文件中读取格式化的数据来建立快表.
@@ -47,3 +49,11 @@ forward有k个元素, 则说明该结点有k个指针可以指向后继结点. `
 
 
 todo: 让快表监听某个端口, 其他进程可以通过向端口发送格式化的数据来存储信息
+
+
+
+## skip_list_server
+
+使用epoll来监听端口7700, 其他进程可以和此端口建立连接, 发送规格化的数据如`value:string\n`就可以存储到对应的快表中. 等到进程关闭连接后将快表中的数据复制到`server_dump`文件夹下, 文件名为`dump_端口号`
+
+当占用端口为k的进程连接到skip_list_server时, 会到`server_dump`中寻找文件名为`dump_k`的文件, 如果有就从其中导入数据, 如果没就建立一个空的skip_list
