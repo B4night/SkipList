@@ -1,5 +1,7 @@
 # SkipList
 
+22-11-15更新: `skip_list_server`中加入[线程池](https://github.com/B4night/thread_poll_Cpp11)来处理**添加client**和**与client通信**.
+
 ## skip_list_node
 
 跳表的结点在`skip_list_node.h`文件中实现, 结构如下

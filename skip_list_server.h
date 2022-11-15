@@ -11,6 +11,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string>
+#include "thread_pool.h"
+#include <memory>
+#include <functional>
 
 const int CLIENT_MAX_NUM = 1024;
 
@@ -20,6 +23,8 @@ void sys_err(const char* str) {
 }
 
 class skip_list_server {
+private:
+    static std::unique_ptr<thread_pool> tp;
 private:
     skip_list<std::string, std::string>* lists[CLIENT_MAX_NUM];
     struct client_info {
@@ -54,6 +59,8 @@ private:
     void solve(char* buf, int n, int idx);
     void insert(char* buf, int cnt, int idx);   // insert buf[i..j)
 };
+
+std::unique_ptr<thread_pool> skip_list_server::tp(new thread_pool(2));
 
 const std::string skip_list_server::delimiter = ":";
 
@@ -167,10 +174,14 @@ void skip_list_server::loop() {
         int num = epoll_wait(epfd, evs, CLIENT_MAX_NUM, -1);
         for (int i = 0; i < num; i++) {
             if (evs[i].data.fd == lfd) {
-                do_accept();
+                // do_accept();
+                tp->add_job(std::function<void()>(std::bind(&skip_list_server::do_accept, this)));
             } else {
-                do_communicate(evs[i].data.fd);
+                // do_communicate(evs[i].data.fd);
+                int tmp = evs[i].data.fd;
+                tp->add_job(std::function<void()>(std::bind(&skip_list_server::do_communicate, this, tmp)));
             }
+            this_thread::sleep_for(std::chrono::milliseconds(20));
         }
     }
 }
